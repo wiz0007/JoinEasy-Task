@@ -1,61 +1,30 @@
 # Joineazy — Student, Group & Assignment Management System
 
-**Sprint:** Sprint 1 — Foundation, Authentication, Groups and Assignments  
+**Project:** Full-Stack Assignment Management Platform  
 **Architecture:** Modular Monolith  
 **Frontend:** React 18 + TypeScript + Vite + Tailwind CSS + TanStack Query + React Hook Form + Zod + Lucide React  
 **Backend:** Node.js + Express + TypeScript + Prisma + PostgreSQL + Zod + Argon2id + JWT  
 **Containerization:** Docker + Docker Compose  
+**Repository:** [JoinEasy-Task](https://github.com/wiz0007/JoinEasy-Task.git)  
 
 ---
 
 ## 1. Project Overview
 
-Joineazy enables students to collaborate in groups and complete assignments, while professors manage assignments, configure audience targeting, and share external OneDrive submission links.
-
-### Sprint 1 Scope Deliverables
-
-1. **Authentication & Authorization:**
-   - Student public registration and secure login.
-   - Professor / Admin provisioned authentication.
-   - Argon2id password hashing.
-   - JWT access token (15m) + rotating refresh token (7d) stored securely with token family reuse detection.
-   - Role-based authorization middleware (`STUDENT`, `ADMIN`).
-
-2. **Group Management:**
-   - Students can form a group and automatically become the group `OWNER`.
-   - Single active group constraint: a student cannot belong to more than one active group.
-   - Group capacity enforcement (default 5 students).
-   - Member removal restricted to group owner; owner cannot remove themselves leaving group ownerless.
-
-3. **Group Invitations:**
-   - Owner can invite registered students by email or student ID.
-   - Prevent duplicate pending invitations, self-invitations, or invitations to students already in active groups.
-   - Students can view received invitations and accept or reject.
-   - Transactional acceptance with concurrent capacity validation.
-
-4. **Assignment Management & Targeting:**
-   - Admin creates and edits assignments (title, description, due date, OneDrive URL, status, target audience).
-   - Targeting modes: `ALL_STUDENTS` or `SELECTED_GROUP` (multi-select).
-   - Centralized visibility service: students only discover assignments targeted to all students or specifically to their active group.
-   - External OneDrive links open safely with `target="_blank" rel="noopener noreferrer"`.
-
-5. **User Interface:**
-   - Light theme default, clean academic SaaS aesthetics, responsive down to 320px.
-   - Strictly functional UI copy with zero marketing fluff.
-   - Responsive button adaptation: icon-only with accessible `aria-label` on mobile viewports.
+Joineazy is a full-stack academic platform where students form collaborative groups, manage group members, receive assignments, access OneDrive submission repositories, confirm submissions via a two-step verification workflow, and monitor group progress. Professors (Admins) manage assignments, configure audience targeting (all students or selected groups), and analyze group-wise and student-wise submission performance through an analytics dashboard.
 
 ---
 
-## 2. Default Seeded Credentials
+## 2. Seeded Test Credentials
 
-The database comes pre-seeded with test accounts:
+The database is pre-seeded with test accounts:
 
-| Role | Email | Password | Details |
-|---|---|---|---|
-| **Admin (Professor)** | `professor@joineazy.edu` | `Password123!` | Can create and edit assignments |
-| **Student 1** | `student1@joineazy.edu` | `Password123!` | Student ID: `STU-001` |
-| **Student 2** | `student2@joineazy.edu` | `Password123!` | Student ID: `STU-002` |
-| **Student 3** | `charlie@joineazy.edu` | `Password123!` | Student ID: `STU-003` |
+| Role | Email | Password | Identifier | Permissions |
+|---|---|---|---|---|
+| **Admin (Professor)** | `professor@joineazy.edu` | `Password123!` | — | Create/edit assignments, target groups, view analytics |
+| **Student 1** | `student1@joineazy.edu` | `Password123!` | `STU-001` | Create group, invite members, submit confirmations |
+| **Student 2** | `student2@joineazy.edu` | `Password123!` | `STU-002` | Receive invitations, join groups, submit confirmations |
+| **Student 3** | `charlie@joineazy.edu` | `Password123!` | `STU-003` | Standalone student |
 
 ---
 
@@ -63,24 +32,36 @@ The database comes pre-seeded with test accounts:
 
 ```text
 JoinEasy_assignment/
-├── client/                     # Frontend application (React + Vite + Tailwind)
+├── client/                     # Frontend Application
 │   ├── src/
-│   │   ├── app/                # Router and root providers
-│   │   ├── components/         # Reusable UI (Button, Input, Card, Dialog, Badge, etc.)
-│   │   ├── features/           # Auth, Groups, Invitations, Assignments, Dashboard
-│   │   ├── lib/                # API client, TanStack query setup, utils
-│   │   ├── styles/             # Tailwind index.css and design tokens
-│   │   └── types/              # Domain TypeScript types
+│   │   ├── app/                # Router and React Query providers
+│   │   ├── components/         # Reusable UI (Button, Input, Card, Dialog, Badge, ProgressBar)
+│   │   ├── features/
+│   │   │   ├── auth/           # Login, Register, AuthContext
+│   │   │   ├── groups/         # GroupsPage, CreateGroupModal, AdminGroupsListPage
+│   │   │   ├── invitations/    # InvitationsPage, InviteMemberModal
+│   │   │   ├── assignments/    # AssignmentsListPage, AssignmentDetailsPage, Modals
+│   │   │   ├── submissions/    # ConfirmSubmissionDialog (Two-step confirmation)
+│   │   │   └── dashboard/      # StudentDashboard, AdminDashboard (Analytics)
+│   │   ├── lib/                # API client with token refresh, utils
+│   │   ├── styles/             # Tailwind CSS tokens
+│   │   └── types/              # TypeScript domain types
 │   ├── Dockerfile
 │   └── package.json
 │
-├── server/                     # Backend API (Express + Prisma + TypeScript)
+├── server/                     # Backend API
 │   ├── src/
-│   │   ├── config/             # Environment validation and Prisma singleton
+│   │   ├── config/             # Zod environment config and Prisma client
 │   │   ├── middleware/         # Auth, validation, and error middlewares
-│   │   ├── modules/            # Auth, Groups, Invitations, Assignments modules
-│   │   ├── tests/              # Vitest integration test suite
-│   │   ├── utils/              # JWT, Argon2id, API response/error helpers
+│   │   ├── modules/
+│   │   │   ├── auth/           # Registration, login, logout, refresh, me
+│   │   │   ├── groups/         # Group management and membership
+│   │   │   ├── invitations/    # Student invitations and acceptance
+│   │   │   ├── assignments/    # Assignment CRUD and targeting
+│   │   │   ├── submissions/    # Two-step confirmation and group progress
+│   │   │   └── analytics/      # Professor dashboard and reporting
+│   │   ├── tests/              # 31 Automated Integration Tests
+│   │   ├── utils/              # Argon2id, JWT, API response/error classes
 │   │   ├── app.ts              # Express application assembly
 │   │   └── server.ts           # Server bootstrap
 │   ├── prisma/
@@ -89,11 +70,13 @@ JoinEasy_assignment/
 │   ├── Dockerfile
 │   └── package.json
 │
-├── docs/                       # Project documentation
-│   ├── architecture.md
-│   ├── api.md
-│   ├── database.md
-│   └── sprint-1-test-report.md
+├── docs/                       # Project Documentation
+│   ├── architecture.md         # System architecture and request flow
+│   ├── api.md                  # REST endpoint definitions
+│   ├── database.md             # Entity Relationship Diagram & constraints
+│   ├── testing.md              # Testing guide and coverage
+│   ├── sprint-1-test-report.md # Sprint 1 test report
+│   └── sprint-2-test-report.md # Sprint 2 test report (31/31 passed)
 │
 ├── docker-compose.yml
 ├── .env.example
@@ -103,83 +86,61 @@ JoinEasy_assignment/
 
 ---
 
-## 4. Getting Started & Local Setup
+## 4. Local Installation & Development
 
-### Prerequisites
-- Node.js (v20+ or v22+)
-- npm or pnpm
-- PostgreSQL connection (e.g. Neon or local Docker)
+### 1. Configure Environment Variables
+Copy `.env.example` to `server/.env` and update the connection string:
+```bash
+cp .env.example server/.env
+```
 
-### Installation
+### 2. Install Dependencies
+```bash
+cd server && npm install
+cd ../client && npm install
+```
 
-1. **Clone the repository:**
-   ```bash
-   git clone https://github.com/wiz0007/JoinEasy-Task.git
-   cd JoinEasy-Task
-   ```
+### 3. Synchronize Database & Seed
+```bash
+cd server
+npx prisma db push
+npm run prisma:seed
+```
 
-2. **Configure Environment Variables:**
-   Copy `.env.example` to `server/.env` and configure your `DATABASE_URL`:
-   ```bash
-   cp .env.example server/.env
-   ```
+### 4. Run Locally
+- **Start Backend:**
+  ```bash
+  cd server
+  npm run dev
+  ```
+  API runs on `http://localhost:5000/api/v1`
 
-3. **Install Dependencies:**
-   ```bash
-   cd server && npm install
-   cd ../client && npm install
-   ```
-
-4. **Synchronize Database & Seed Initial Users:**
-   ```bash
-   cd server
-   npx prisma db push
-   npm run prisma:seed
-   ```
-
-5. **Run the Applications:**
-   - **Start Backend:**
-     ```bash
-     cd server
-     npm run dev
-     ```
-     Server will listen on `http://localhost:5000/api/v1`.
-
-   - **Start Frontend:**
-     ```bash
-     cd client
-     npm run dev
-     ```
-     Client will launch on `http://localhost:5173`.
+- **Start Frontend:**
+  ```bash
+  cd client
+  npm run dev
+  ```
+  Web client runs on `http://localhost:5173`
 
 ---
 
-## 5. Running Automated Tests
+## 5. Automated Tests
 
-Run the full integration test suite:
+Run the full integration test suite (31 tests across auth, groups, assignments, submissions, and analytics):
 ```bash
 cd server
 npm run test
 ```
 
-All 20 test cases will execute against the configured test database.
+All 31 integration tests run deterministically against the database with 100% pass rate.
 
 ---
 
 ## 6. Docker Deployment
 
-To spin up all services via Docker Compose:
+To build and run all services in Docker:
 ```bash
 docker compose up --build
 ```
 - Frontend: `http://localhost:5173`
-- Backend API: `http://localhost:5000`
-
----
-
-## 7. Sprint 2 Extension Boundaries
-
-The following features belong strictly to Sprint 2 and have clean relational extension paths ready:
-- Two-step submission confirmation ("Yes, I have submitted").
-- Submission audit timestamps and group progress calculations.
-- Professor performance analytics dashboards and charts.
+- Backend: `http://localhost:5000`

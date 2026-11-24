@@ -12,6 +12,11 @@ import {
   createGroupInvitationsRouter,
 } from './modules/invitations/invitations.routes.js';
 import { createAssignmentsRouter } from './modules/assignments/assignments.routes.js';
+import {
+  createSubmissionsRouter,
+  createGroupSubmissionsRouter,
+} from './modules/submissions/submissions.routes.js';
+import { createAnalyticsRouter } from './modules/analytics/analytics.routes.js';
 
 export const createApp = (): Express => {
   const app = express();
@@ -60,8 +65,11 @@ export const createApp = (): Express => {
   apiRouter.use('/auth', authLimiter, createAuthRouter());
   apiRouter.use('/groups', createGroupsRouter());
   apiRouter.use('/groups', createGroupInvitationsRouter());
+  apiRouter.use('/groups', createGroupSubmissionsRouter());
   apiRouter.use('/invitations', createInvitationsRouter());
   apiRouter.use('/assignments', createAssignmentsRouter());
+  apiRouter.use('/assignments', createSubmissionsRouter());
+  apiRouter.use('/admin/analytics', createAnalyticsRouter());
 
   app.use('/api/v1', apiRouter);
 

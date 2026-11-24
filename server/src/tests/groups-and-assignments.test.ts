@@ -47,6 +47,11 @@ describe('Groups & Assignments Workflows', () => {
       .send({ email: 'charlie@joineazy.edu', password: 'Password123!' });
     student3Token = s3Res.body.data.accessToken;
     student3Id = s3Res.body.data.user.id;
+
+    // Cleanup active group memberships for test students
+    await prisma.groupMember.deleteMany({
+      where: { userId: { in: [student1Id, student2Id, student3Id] } },
+    });
   });
 
   afterAll(async () => {
@@ -236,7 +241,7 @@ describe('Groups & Assignments Workflows', () => {
         .get(`/api/v1/assignments/${assignmentGroupOnlyId}`)
         .set('Authorization', `Bearer ${student3Token}`);
 
-      expect(res.status).toBe(404); // Concealed from unauthorized student
+      expect(res.status).toBe(404);
     });
   });
 });

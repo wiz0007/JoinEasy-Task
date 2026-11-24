@@ -1,6 +1,6 @@
-# Joineazy Database Schema & ERD — Sprint 1
+# Joineazy Database Schema & ERD — Sprint 1 & 2
 
-## Entity Relationship Overview
+## Complete Entity Relationship Diagram
 
 ```mermaid
 erDiagram
@@ -10,10 +10,13 @@ erDiagram
     User ||--o{ GroupInvitation : sends
     User ||--o{ GroupInvitation : receives
     User ||--o{ Assignment : creates
+    User ||--o{ SubmissionConfirmation : confirms
     Group ||--o{ GroupMember : contains
     Group ||--o{ GroupInvitation : has
     Group ||--o{ AssignmentTarget : targeted_by
+    Group ||--o{ SubmissionConfirmation : receives
     Assignment ||--o{ AssignmentTarget : targets
+    Assignment ||--o{ SubmissionConfirmation : confirmed_for
 
     User {
         uuid id PK
@@ -87,9 +90,20 @@ erDiagram
         uuid groupId FK
         datetime createdAt
     }
+
+    SubmissionConfirmation {
+        uuid id PK
+        uuid assignmentId FK
+        uuid groupId FK
+        uuid confirmedById FK
+        datetime confirmedAt
+        boolean isLate
+        datetime createdAt
+        datetime updatedAt
+    }
 ```
 
-## Constraints Enforced
+## Relational Constraints & Invariants
 
 1. **Unique Email**: `User(email)` is case-insensitively unique.
 2. **Unique Student ID**: `User(studentId)` is unique when provided.
@@ -99,3 +113,5 @@ erDiagram
 6. **Audience Targeting Integrity**:
    - `ALL_STUDENTS`: `targetType = 'ALL_STUDENTS'` and `groupId = null`.
    - `SELECTED_GROUP`: `targetType = 'SELECTED_GROUP'` with valid active `groupId`.
+7. **Unique Group Submission**: `SubmissionConfirmation(assignmentId, groupId)` is unique, enforcing that each group has exactly one confirmation record per assignment.
+8. **Confirmation Auditability**: `confirmedById` records the exact student who verified the submission, with `isLate` preserved.

@@ -2,33 +2,44 @@ import React, { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { useParams, Link } from 'react-router-dom';
 import { apiRequest } from '../../lib/api.js';
-import { Assignment } from '../../types/index.js';
+import { Assignment, SubmissionConfirmation } from '../../types/index.js';
 import { Card } from '../../components/ui/Card.js';
 import { Button } from '../../components/ui/Button.js';
 import { Badge } from '../../components/ui/Badge.js';
 import { LoadingSpinner } from '../../components/ui/LoadingSpinner.js';
 import { EditAssignmentModal } from './EditAssignmentModal.js';
+import { ConfirmSubmissionDialog } from '../submissions/ConfirmSubmissionDialog.js';
 import { formatDate, isPastDate } from '../../lib/utils.js';
-import { ArrowLeft, ExternalLink, Calendar, User, Edit, ShieldAlert } from 'lucide-react';
+import { ArrowLeft, ExternalLink, Calendar, User, Edit, ShieldAlert, CheckCircle2 } from 'lucide-react';
 import { useAuth } from '../auth/AuthContext.js';
 
 export const AssignmentDetailsPage: React.FC = () => {
   const { assignmentId } = useParams<{ assignmentId: string }>();
-  const { user } = useAuth();
+  const { user, activeGroup } = useAuth();
   const isAdmin = user?.role === 'ADMIN';
 
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isConfirmOpen, setIsConfirmOpen] = useState(false);
 
   const {
     data: assignment,
-    isLoading,
+    isLoading: loadingAssignment,
     error,
   } = useQuery({
     queryKey: ['assignment', assignmentId],
     queryFn: () => apiRequest<Assignment>(`/assignments/${assignmentId}`),
   });
 
-  if (isLoading) {
+  const { data: submission, isLoading: loadingSubmission } = useQuery({
+    queryKey: ['submission', assignmentId, activeGroup?.id],
+    queryFn: () =>
+      apiRequest<SubmissionConfirmation | null>(
+        `/assignments/${assignmentId}/groups/${activeGroup!.id}/submission`
+      ),
+    enabled: Boolean(!isAdmin && activeGroup?.id && assignmentId),
+  });
+
+  if (loadingAssignment || (!isAdmin && activeGroup?.id && loadingSubmission)) {
     return <LoadingSpinner message="Loading assignment..." />;
   }
 
@@ -53,6 +64,7 @@ export const AssignmentDetailsPage: React.FC = () => {
 
   const overdue = isPastDate(assignment.dueDate);
   const isSelectedGroup = assignment.targets.some((t) => t.targetType === 'SELECTED_GROUP');
+  const isSubmitted = Boolean(submission);
 
   return (
     <div className="space-y-6">
@@ -82,9 +94,18 @@ export const AssignmentDetailsPage: React.FC = () => {
             <div>
               <div className="flex items-center space-x-2">
                 <h1 className="text-xl font-bold text-main-text">{assignment.title}</h1>
-                <Badge variant={overdue ? 'danger' : 'warning'}>
-                  {overdue ? 'Overdue' : 'Active'}
+                <Badge
+                  variant={
+                    isSubmitted
+                      ? 'success'
+                      : overdue
+                      ? 'danger'
+                      : 'warning'
+                  }
+                >
+                  {isSubmitted ? 'Submitted' : overdue ? 'Overdue' : 'Pending'}
                 </Badge>
+                {submission?.isLate && <Badge variant="danger">Late Submission</Badge>}
                 {isAdmin && (
                   <Badge variant={assignment.status === 'PUBLISHED' ? 'success' : 'outline'}>
                     {assignment.status}
@@ -107,6 +128,46 @@ export const AssignmentDetailsPage: React.FC = () => {
               </div>
             </div>
           </div>
+
+          {/* Submission Status Confirmation Details */}
+          {!isAdmin && activeGroup && (
+            <div className="rounded-md border border-border p-4 bg-slate-50/50">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <h3 className="text-xs font-bold text-main-text uppercase tracking-wider">
+                    Group Submission Status
+                  </h3>
+                  {isSubmitted ? (
+                    <div className="mt-1 text-xs text-emerald-800 space-y-0.5">
+                      <p className="font-semibold flex items-center">
+                        <CheckCircle2 className="h-4 w-4 mr-1 text-emerald-600" />
+                        Submission confirmed by {submission!.confirmedBy.name}
+                      </p>
+                      <p className="text-muted-text text-[11px]">
+                        Recorded on {formatDate(submission!.confirmedAt)}
+                        {submission!.isLate && ' (Submitted after due date)'}
+                      </p>
+                    </div>
+                  ) : (
+                    <p className="text-xs text-muted-text mt-1">
+                      No submission confirmation has been recorded yet for group{' '}
+                      <span className="font-semibold text-main-text">{activeGroup.name}</span>.
+                    </p>
+                  )}
+                </div>
+
+                {!isSubmitted && (
+                  <Button
+                    size="sm"
+                    onClick={() => setIsConfirmOpen(true)}
+                    icon={<CheckCircle2 className="h-4 w-4" />}
+                  >
+                    Yes, I have submitted
+                  </Button>
+                )}
+              </div>
+            </div>
+          )}
 
           {/* Description */}
           <div>
@@ -156,11 +217,23 @@ export const AssignmentDetailsPage: React.FC = () => {
         </div>
       </Card>
 
+      {/* Admin Edit Modal */}
       {isAdmin && (
         <EditAssignmentModal
           assignment={assignment}
           isOpen={isEditOpen}
           onClose={() => setIsEditOpen(false)}
+        />
+      )}
+
+      {/* Student Two-Step Confirmation Modal */}
+      {!isAdmin && activeGroup && (
+        <ConfirmSubmissionDialog
+          assignmentId={assignment.id}
+          assignmentTitle={assignment.title}
+          groupId={activeGroup.id}
+          isOpen={isConfirmOpen}
+          onClose={() => setIsConfirmOpen(false)}
         />
       )}
     </div>

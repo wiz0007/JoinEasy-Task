@@ -1,134 +1,71 @@
-# Joineazy API Documentation — Sprint 1
+# Joineazy API Documentation — Complete System
 
 Base URL: `/api/v1`
 
 ## 1. Authentication Endpoints
 
-### POST `/auth/register`
-- **Permission**: Public (Student only)
-- **Body**:
-  ```json
-  {
-    "name": "Jane Doe",
-    "email": "jane@joineazy.edu",
-    "studentId": "STU-100",
-    "password": "Password123!",
-    "confirmPassword": "Password123!"
-  }
-  ```
-- **Response (201 Created)**:
-  ```json
-  {
-    "success": true,
-    "message": "Registration successful",
-    "data": {
-      "user": { "id": "...", "name": "Jane Doe", "email": "jane@joineazy.edu", "role": "STUDENT" },
-      "accessToken": "...",
-      "refreshToken": "..."
-    }
-  }
-  ```
-
-### POST `/auth/login`
-- **Permission**: Public
-- **Body**:
-  ```json
-  {
-    "email": "professor@joineazy.edu",
-    "password": "Password123!"
-  }
-  ```
-- **Response (200 OK)**: Returns tokens and user object.
-
-### POST `/auth/refresh`
-- **Permission**: Public with valid refresh token (via HttpOnly cookie or request body)
-- **Response (200 OK)**: Returns rotated `accessToken` and `refreshToken`.
-
-### POST `/auth/logout`
-- **Permission**: Authenticated
-- **Response (200 OK)**: Invalidates refresh token family and clears session cookie.
-
-### GET `/auth/me`
-- **Permission**: Authenticated
-- **Response (200 OK)**: Returns current user profile and active group membership.
+| Method | Endpoint | Permission | Description |
+|---|---|---|---|
+| `POST` | `/auth/register` | Public (Student) | Registers student account with Argon2id hash |
+| `POST` | `/auth/login` | Public | Authenticates user; issues access + refresh tokens |
+| `POST` | `/auth/refresh` | Public (Refresh Token) | Rotates refresh token within family |
+| `POST` | `/auth/logout` | Authenticated | Revokes refresh token session |
+| `GET` | `/auth/me` | Authenticated | Returns authenticated user profile and active group |
 
 ---
 
 ## 2. Group Endpoints
 
-### POST `/groups`
-- **Permission**: Student
-- **Body**: `{ "name": "Algorithms Group A" }`
-- **Response (201 Created)**: Creates group and creator's OWNER membership transactionally.
-
-### GET `/groups/me`
-- **Permission**: Student
-- **Response (200 OK)**: Returns current student's active group, member list, and pending invitations (if owner).
-
-### GET `/groups/all`
-- **Permission**: Admin
-- **Response (200 OK)**: Returns all active student groups.
-
-### PATCH `/groups/:groupId`
-- **Permission**: Group Owner
-- **Body**: `{ "name": "Renamed Group" }`
-
-### DELETE `/groups/:groupId/members/:userId`
-- **Permission**: Group Owner
-- **Response (204 No Content)**: Removes member from group.
+| Method | Endpoint | Permission | Description |
+|---|---|---|---|
+| `POST` | `/groups` | Student | Creates group and OWNER membership atomically |
+| `GET` | `/groups/me` | Student | Returns active group and member list |
+| `GET` | `/groups/all` | Admin | Returns all registered groups |
+| `GET` | `/groups/:groupId` | Member / Admin | Returns group details |
+| `PATCH` | `/groups/:groupId` | Group Owner | Updates group name |
+| `DELETE` | `/groups/:groupId/members/:userId` | Group Owner | Removes member from group |
 
 ---
 
 ## 3. Group Invitation Endpoints
 
-### POST `/groups/:groupId/invitations`
-- **Permission**: Group Owner
-- **Body**: `{ "identifier": "student2@joineazy.edu" }` or `{ "identifier": "STU-002" }`
-- **Response (201 Created)**: Returns invitation details.
-
-### GET `/invitations/me`
-- **Permission**: Student
-- **Response (200 OK)**: Returns pending invitations received by the requesting student.
-
-### POST `/invitations/:invitationId/accept`
-- **Permission**: Invited Student
-- **Response (200 OK)**: Atomically marks invitation accepted and creates membership.
-
-### POST `/invitations/:invitationId/reject`
-- **Permission**: Invited Student
-- **Response (200 OK)**: Marks invitation rejected.
-
-### DELETE `/groups/:groupId/invitations/:invitationId`
-- **Permission**: Group Owner
-- **Response (204 No Content)**: Cancels pending invitation.
+| Method | Endpoint | Permission | Description |
+|---|---|---|---|
+| `POST` | `/groups/:groupId/invitations` | Group Owner | Invites student by email or student ID |
+| `GET` | `/invitations/me` | Student | Lists pending invitations received |
+| `POST` | `/invitations/:invitationId/accept` | Invited Student | Accepts invitation and creates membership |
+| `POST` | `/invitations/:invitationId/reject` | Invited Student | Rejects invitation |
+| `DELETE` | `/groups/:groupId/invitations/:invitationId` | Group Owner | Cancels pending invitation |
 
 ---
 
 ## 4. Assignment Endpoints
 
-### POST `/assignments`
-- **Permission**: Admin
-- **Body**:
-  ```json
-  {
-    "title": "Lab 1: Distributed Algorithms",
-    "description": "Complete problem sets 1 to 3.",
-    "dueDate": "2026-12-01T23:59:59.000Z",
-    "oneDriveUrl": "https://onedrive.live.com/submission-link",
-    "status": "PUBLISHED",
-    "targetType": "SELECTED_GROUP",
-    "targetGroupIds": ["uuid-of-group"]
-  }
-  ```
+| Method | Endpoint | Permission | Description |
+|---|---|---|---|
+| `POST` | `/assignments` | Admin | Creates assignment with audience targeting |
+| `GET` | `/assignments` | Authenticated | Role-aware listing (Student sees applicable only) |
+| `GET` | `/assignments/:assignmentId` | Authorized | Returns assignment details |
+| `PATCH` | `/assignments/:assignmentId` | Admin | Updates assignment details or targets |
 
-### GET `/assignments`
-- **Permission**: Authenticated (Role-aware visibility)
-  - Admin: views all assignments (DRAFT, PUBLISHED, ARCHIVED).
-  - Student: views only PUBLISHED assignments targeting ALL_STUDENTS or their active group.
+---
 
-### GET `/assignments/:assignmentId`
-- **Permission**: Authorized user (Student must have target permission; Admin can view any).
+## 5. Submission & Progress Endpoints (Sprint 2)
 
-### PATCH `/assignments/:assignmentId`
-- **Permission**: Admin
-- **Body**: Partial update of title, description, due date, OneDrive URL, status, or targeting.
+| Method | Endpoint | Permission | Description |
+|---|---|---|---|
+| `POST` | `/assignments/:assignmentId/groups/:groupId/confirm` | Active Group Member | Confirms group submission ("Yes, I have submitted") |
+| `GET` | `/assignments/:assignmentId/groups/:groupId/submission` | Group Member / Admin | Returns confirmed submission details |
+| `GET` | `/groups/:groupId/progress` | Group Member / Admin | Returns group assignment progress and completion % |
+| `GET` | `/groups/:groupId/submissions` | Group Member / Admin | Lists all confirmed submissions for group |
+
+---
+
+## 6. Professor Analytics Endpoints (Sprint 2)
+
+| Method | Endpoint | Permission | Description |
+|---|---|---|---|
+| `GET` | `/admin/analytics/dashboard` | Admin | Global summary metrics (assignments, groups, completion %) |
+| `GET` | `/admin/analytics/assignments` | Admin | Assignment-wise completion breakdown |
+| `GET` | `/admin/analytics/groups` | Admin | Group-wise performance metrics |
+| `GET` | `/admin/analytics/students` | Admin | Student-wise confirmation audit trail |

@@ -52,22 +52,23 @@ enum AssignmentTargetType {
 }
 
 model User {
-  id                  String             @id @default(uuid())
-  name                String
-  email               String             @unique
-  passwordHash        String
-  role                Role               @default(STUDENT)
-  studentId           String?            @unique
-  status              UserStatus         @default(ACTIVE)
-  createdAt           DateTime           @default(now())
-  updatedAt           DateTime           @updatedAt
+  id                      String                   @id @default(uuid())
+  name                    String
+  email                   String                   @unique
+  passwordHash            String
+  role                    Role                     @default(STUDENT)
+  studentId               String?                  @unique
+  status                  UserStatus               @default(ACTIVE)
+  createdAt               DateTime                 @default(now())
+  updatedAt               DateTime                 @updatedAt
 
-  ownedGroups         Group[]            @relation("GroupCreator")
-  groupMemberships    GroupMember[]
-  sentInvitations     GroupInvitation[]  @relation("SentInvitations")
-  receivedInvitations GroupInvitation[]  @relation("ReceivedInvitations")
-  createdAssignments Assignment[]       @relation("CreatedAssignments")
-  refreshTokens       RefreshToken[]
+  ownedGroups             Group[]                  @relation("GroupCreator")
+  groupMemberships        GroupMember[]
+  sentInvitations         GroupInvitation[]        @relation("SentInvitations")
+  receivedInvitations     GroupInvitation[]        @relation("ReceivedInvitations")
+  createdAssignments     Assignment[]             @relation("CreatedAssignments")
+  refreshTokens           RefreshToken[]
+  submissionConfirmations SubmissionConfirmation[]
 
   @@map("users")
 }
@@ -90,18 +91,19 @@ model RefreshToken {
 }
 
 model Group {
-  id                String             @id @default(uuid())
-  name              String
-  createdById       String
-  status            GroupStatus        @default(ACTIVE)
-  maxMembers        Int                @default(5)
-  createdAt         DateTime           @default(now())
-  updatedAt         DateTime           @updatedAt
+  id                      String                   @id @default(uuid())
+  name                    String
+  createdById             String
+  status                  GroupStatus              @default(ACTIVE)
+  maxMembers              Int                      @default(5)
+  createdAt               DateTime                 @default(now())
+  updatedAt               DateTime                 @updatedAt
 
-  createdBy         User               @relation("GroupCreator", fields: [createdById], references: [id], onDelete: Restrict)
-  members           GroupMember[]
-  invitations       GroupInvitation[]
-  assignmentTargets AssignmentTarget[]
+  createdBy               User                     @relation("GroupCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  members                 GroupMember[]
+  invitations             GroupInvitation[]
+  assignmentTargets       AssignmentTarget[]
+  submissionConfirmations SubmissionConfirmation[]
 
   @@index([createdById])
   @@map("groups")
@@ -146,18 +148,19 @@ model GroupInvitation {
 }
 
 model Assignment {
-  id          String             @id @default(uuid())
-  title       String
-  description String             @db.Text
-  dueDate     DateTime
-  oneDriveUrl String
-  createdById String
-  status      AssignmentStatus   @default(PUBLISHED)
-  createdAt   DateTime           @default(now())
-  updatedAt   DateTime           @updatedAt
+  id                      String                   @id @default(uuid())
+  title                   String
+  description             String                   @db.Text
+  dueDate                 DateTime
+  oneDriveUrl             String
+  createdById             String
+  status                  AssignmentStatus         @default(PUBLISHED)
+  createdAt               DateTime                 @default(now())
+  updatedAt               DateTime                 @updatedAt
 
-  createdBy   User               @relation("CreatedAssignments", fields: [createdById], references: [id], onDelete: Restrict)
-  targets     AssignmentTarget[]
+  createdBy               User                     @relation("CreatedAssignments", fields: [createdById], references: [id], onDelete: Restrict)
+  targets                 AssignmentTarget[]
+  submissionConfirmations SubmissionConfirmation[]
 
   @@index([createdById])
   @@index([status])
@@ -177,4 +180,24 @@ model AssignmentTarget {
   @@unique([assignmentId, groupId])
   @@index([targetType, groupId])
   @@map("assignment_targets")
+}
+
+model SubmissionConfirmation {
+  id            String     @id @default(uuid())
+  assignmentId  String
+  groupId       String
+  confirmedById String
+  confirmedAt   DateTime   @default(now())
+  isLate        Boolean    @default(false)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+
+  assignment    Assignment @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  group         Group      @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  confirmedBy   User       @relation(fields: [confirmedById], references: [id], onDelete: Restrict)
+
+  @@unique([assignmentId, groupId])
+  @@index([groupId])
+  @@index([confirmedById])
+  @@map("submission_confirmations")
 }
