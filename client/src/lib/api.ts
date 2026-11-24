@@ -1,4 +1,15 @@
-const API_BASE = (import.meta.env.VITE_API_URL ? import.meta.env.VITE_API_URL.replace(/\/$/, '') : '') + '/api/v1';
+const envUrl =
+  (import.meta.env.VITE_API_URL as string | undefined) ||
+  (import.meta.env.VITE_BACKEND_URL as string | undefined) ||
+  (import.meta.env.BACKEND_URL as string | undefined);
+
+const API_BASE = (
+  envUrl
+    ? envUrl.replace(/\/$/, '')
+    : typeof window !== 'undefined' && window.location.hostname.includes('vercel.app')
+      ? 'https://joineasy-task-dqux.onrender.com'
+      : ''
+) + '/api/v1';
 
 export class ApiClientError extends Error {
   public statusCode: number;
