@@ -161,8 +161,8 @@ export const StudentDashboard: React.FC = () => {
                         item.status === 'SUBMITTED'
                           ? 'success'
                           : item.status === 'OVERDUE'
-                          ? 'danger'
-                          : 'warning'
+                            ? 'danger'
+                            : 'warning'
                       }
                     >
                       {item.status}
