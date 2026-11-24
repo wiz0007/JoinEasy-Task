@@ -1,0 +1,180 @@
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+enum Role {
+  STUDENT
+  ADMIN
+}
+
+enum UserStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum GroupStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum GroupMemberRole {
+  OWNER
+  MEMBER
+}
+
+enum GroupMemberStatus {
+  ACTIVE
+  INACTIVE
+}
+
+enum InvitationStatus {
+  PENDING
+  ACCEPTED
+  REJECTED
+  CANCELLED
+  EXPIRED
+}
+
+enum AssignmentStatus {
+  DRAFT
+  PUBLISHED
+  ARCHIVED
+}
+
+enum AssignmentTargetType {
+  ALL_STUDENTS
+  SELECTED_GROUP
+}
+
+model User {
+  id                  String             @id @default(uuid())
+  name                String
+  email               String             @unique
+  passwordHash        String
+  role                Role               @default(STUDENT)
+  studentId           String?            @unique
+  status              UserStatus         @default(ACTIVE)
+  createdAt           DateTime           @default(now())
+  updatedAt           DateTime           @updatedAt
+
+  ownedGroups         Group[]            @relation("GroupCreator")
+  groupMemberships    GroupMember[]
+  sentInvitations     GroupInvitation[]  @relation("SentInvitations")
+  receivedInvitations GroupInvitation[]  @relation("ReceivedInvitations")
+  createdAssignments Assignment[]       @relation("CreatedAssignments")
+  refreshTokens       RefreshToken[]
+
+  @@map("users")
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  userId    String
+  tokenHash String   @unique
+  familyId  String
+  isRevoked Boolean  @default(false)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([familyId])
+  @@map("refresh_tokens")
+}
+
+model Group {
+  id                String             @id @default(uuid())
+  name              String
+  createdById       String
+  status            GroupStatus        @default(ACTIVE)
+  maxMembers        Int                @default(5)
+  createdAt         DateTime           @default(now())
+  updatedAt         DateTime           @updatedAt
+
+  createdBy         User               @relation("GroupCreator", fields: [createdById], references: [id], onDelete: Restrict)
+  members           GroupMember[]
+  invitations       GroupInvitation[]
+  assignmentTargets AssignmentTarget[]
+
+  @@index([createdById])
+  @@map("groups")
+}
+
+model GroupMember {
+  id        String            @id @default(uuid())
+  groupId   String
+  userId    String
+  role      GroupMemberRole   @default(MEMBER)
+  status    GroupMemberStatus @default(ACTIVE)
+  joinedAt  DateTime          @default(now())
+  createdAt DateTime          @default(now())
+  updatedAt DateTime          @updatedAt
+
+  group     Group             @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  user      User              @relation(fields: [userId], references: [id], onDelete: Restrict)
+
+  @@unique([groupId, userId])
+  @@index([userId, status])
+  @@map("group_members")
+}
+
+model GroupInvitation {
+  id            String           @id @default(uuid())
+  groupId       String
+  invitedUserId String
+  invitedById   String
+  status        InvitationStatus @default(PENDING)
+  expiresAt     DateTime
+  respondedAt   DateTime?
+  createdAt     DateTime         @default(now())
+  updatedAt     DateTime         @updatedAt
+
+  group         Group            @relation(fields: [groupId], references: [id], onDelete: Cascade)
+  invitedUser   User             @relation("ReceivedInvitations", fields: [invitedUserId], references: [id], onDelete: Restrict)
+  invitedBy     User             @relation("SentInvitations", fields: [invitedById], references: [id], onDelete: Restrict)
+
+  @@index([groupId, status])
+  @@index([invitedUserId, status])
+  @@map("group_invitations")
+}
+
+model Assignment {
+  id          String             @id @default(uuid())
+  title       String
+  description String             @db.Text
+  dueDate     DateTime
+  oneDriveUrl String
+  createdById String
+  status      AssignmentStatus   @default(PUBLISHED)
+  createdAt   DateTime           @default(now())
+  updatedAt   DateTime           @updatedAt
+
+  createdBy   User               @relation("CreatedAssignments", fields: [createdById], references: [id], onDelete: Restrict)
+  targets     AssignmentTarget[]
+
+  @@index([createdById])
+  @@index([status])
+  @@map("assignments")
+}
+
+model AssignmentTarget {
+  id           String               @id @default(uuid())
+  assignmentId String
+  targetType   AssignmentTargetType
+  groupId      String?
+  createdAt    DateTime             @default(now())
+
+  assignment   Assignment           @relation(fields: [assignmentId], references: [id], onDelete: Cascade)
+  group        Group?               @relation(fields: [groupId], references: [id], onDelete: Cascade)
+
+  @@unique([assignmentId, groupId])
+  @@index([targetType, groupId])
+  @@map("assignment_targets")
+}
