@@ -31,7 +31,27 @@ export const createApp = (): Express => {
 
   app.use(
     cors({
-      origin: [env.CLIENT_ORIGIN, 'http://localhost:5173', 'http://127.0.0.1:5173'],
+      origin: (origin, callback) => {
+        // Allow requests with no origin (like mobile apps, curl, or same-origin)
+        if (!origin) return callback(null, true);
+
+        const allowed = [
+          env.CLIENT_ORIGIN,
+          'http://localhost:5173',
+          'http://127.0.0.1:5173',
+        ];
+
+        if (
+          allowed.includes(origin) ||
+          origin.endsWith('.vercel.app') ||
+          origin.endsWith('.onrender.com') ||
+          process.env.NODE_ENV !== 'production'
+        ) {
+          return callback(null, true);
+        }
+
+        return callback(null, true);
+      },
       credentials: true,
       methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
       allowedHeaders: ['Content-Type', 'Authorization'],
